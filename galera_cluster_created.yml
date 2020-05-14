@@ -3,14 +3,15 @@ services:
   db01:
     image: hauptmedia/mariadb:10.1
     hostname: db01
-    ports:
-      - 13306:3306
+    networks:
+        breth1:
+            ipv4_address: 10.11.108.42
     environment:
-      - MYSQL_ROOT_PASSWORD=test
-      - REPLICATION_PASSWORD=test
+      - MYSQL_ROOT_PASSWORD=cloudstack
+      - REPLICATION_PASSWORD=cloudstack
       - MYSQL_DATABASE=maria
       - MYSQL_USER=maria
-      - MYSQL_PASSWORD=test
+      - MYSQL_PASSWORD=cloudstack
       - GALERA=On
       - NODE_NAME=db01
       - CLUSTER_NAME=maria_cluster
@@ -23,10 +24,11 @@ services:
       - db01
     links:
       - db01
-    ports:
-      - 23306:3306
+    networks:
+        breth1:
+            ipv4_address: 10.11.108.43
     environment:
-      - REPLICATION_PASSWORD=test
+      - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
       - NODE_NAME=db02
       - CLUSTER_NAME=maria_cluster
@@ -39,11 +41,24 @@ services:
       - db01
     links:
       - db01
-    ports:
-      - 33306:3306
+    networks:
+        breth1:
+            ipv4_address: 10.11.108.44
     environment:
-      - REPLICATION_PASSWORD=test
+      - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
       - NODE_NAME=db03
       - CLUSTER_NAME=maria_cluster
       - CLUSTER_ADDRESS=gcomm://db01,db02,db03
+
+networks:
+    breth1:
+        driver: bridge
+        driver_opts:
+            com.docker.network.bridge.name: "breth1"
+        ipam:
+            driver: default
+            config:
+                - subnet: 10.11.108.0/24
+                  iprange: 10.11.108.0/26
+                  gateway: 10.11.108.254
