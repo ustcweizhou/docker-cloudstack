@@ -1,0 +1,50 @@
+version: "2"
+services:
+  db01:
+    image: hauptmedia/mariadb:10.1
+    hostname: db01
+    ports:
+      - 13306:3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=cloudstack
+      - REPLICATION_PASSWORD=cloudstack
+      - MYSQL_DATABASE=maria
+      - MYSQL_USER=maria
+      - MYSQL_PASSWORD=cloudstack
+      - GALERA=On
+      - NODE_NAME=db01
+      - CLUSTER_NAME=maria_cluster
+      - CLUSTER_ADDRESS=gcomm://
+    command: --wsrep-new-cluster
+
+  db02:
+    image: hauptmedia/mariadb:10.1
+    hostname: db02
+    depends_on:
+      - db01
+    links:
+      - db01
+    ports:
+      - 23306:3306
+    environment:
+      - REPLICATION_PASSWORD=cloudstack
+      - GALERA=On
+      - NODE_NAME=db02
+      - CLUSTER_NAME=maria_cluster
+      - CLUSTER_ADDRESS=gcomm://db01,db02,db03
+      
+  db03:
+    image: hauptmedia/mariadb:10.1
+    hostname: db03
+    depends_on:
+      - db01
+    links:
+      - db01
+    ports:
+      - 33306:3306
+    environment:
+      - REPLICATION_PASSWORD=cloudstack
+      - GALERA=On
+      - NODE_NAME=db03
+      - CLUSTER_NAME=maria_cluster
+      - CLUSTER_ADDRESS=gcomm://db01,db02,db03
