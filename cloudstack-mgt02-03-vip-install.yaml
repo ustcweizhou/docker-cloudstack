@@ -43,13 +43,15 @@ services:
   mgtvip:
     image: nginx
     hostname: mgtvip
+    ports:
+        - "8080"
     networks:
         breth1:
             ipv4_address: {{ mgt_vip }}
     volumes:
-        - {{ dir }}/nginx-cloudstack.conf:/etc/nginx/nginx-galera.conf
+        - {{ dir }}/nginx-cloudstack.conf:/etc/nginx/nginx.conf
 
 networks:
   breth1:
     external:
-      name: dockercloudstack_breth1
+      name: {{ bridge }}

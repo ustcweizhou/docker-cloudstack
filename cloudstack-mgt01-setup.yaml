@@ -23,4 +23,4 @@ services:
 networks:
   breth1:
     external:
-      name: dockercloudstack_breth1
+      name: {{ bridge }}
