@@ -7,7 +7,7 @@ services:
         breth1:
             ipv4_address: {{ db01_ip }}
     volumes:
-        - /root/docker/db01:/var/lib/mysql
+        - {{ dir }}/db01:/var/lib/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=cloudstack
       - REPLICATION_PASSWORD=cloudstack
@@ -31,7 +31,7 @@ services:
         breth1:
             ipv4_address: {{ db02_ip }}
     volumes:
-        - /root/docker/db02:/var/lib/mysql
+        - {{ dir }}/db02:/var/lib/mysql
     environment:
       - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
@@ -50,7 +50,7 @@ services:
         breth1:
             ipv4_address: {{ db03_ip }}
     volumes:
-        - /root/docker/db03:/var/lib/mysql
+        - {{ dir }}/db03:/var/lib/mysql
     environment:
       - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
@@ -73,7 +73,7 @@ services:
         breth1:
             ipv4_address: {{ db_vip }}
     volumes:
-        - /root/docker/nginx.conf:/etc/nginx/nginx.conf
+        - {{ dir }}/nginx-galera.conf:/etc/nginx/nginx-galera.conf
 
 networks:
     breth1:

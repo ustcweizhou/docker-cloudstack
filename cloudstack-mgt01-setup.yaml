@@ -7,7 +7,7 @@ services:
         breth1:
             ipv4_address: {{ mgt01_ip }}
     volumes:
-        - /root/docker/packages:/root/packages
+        - {{ dir }}/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
       - MYSQL_ADDRESS={{ db_vip }}
