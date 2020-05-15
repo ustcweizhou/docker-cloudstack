@@ -34,25 +34,69 @@ setup_cloudstack() {
     cloudstack-setup-management --no-start
 }
 
-start_cloudstack() {
-    action=$1
+find_pids() {
+    service=$1
+    pids=$(ps aux |grep "usr/bin/java" |grep "$service" |awk '{print $2}')
+    echo $pids
+}
 
+stop_pid() {
+    pids=$1
+    for pid in $pids;do
+        kill -HUP $pid
+    done
+}
+
+start_management() {
     source /etc/default/cloudstack-management
-    /usr/bin/java $JAVA_DEBUG $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS > /dev/null 2>&1 & 
+    /usr/bin/java $JAVA_DEBUG $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS > /dev/null 2>&1 &
+}
 
+start_usage() {
     source /etc/default/cloudstack-usage
     /usr/bin/java -Dpid=$$ $JAVA_OPTS $JAVA_DEBUG -cp $CLASSPATH $JAVA_CLASS > /dev/null 2>&1 &
 }
 
-for f in `ls /root/packages/*.asc`;do
-    apt-key add $f;
-done
+start_cloudstack() {
+    action=$1
+    echo "$action cloudstack management server"
+    pids=$(find_pids "cloudstack-management")
+    if [ "$pids" != "" ];then
+        if [ "$action" = "start" ];then
+            echo >&2 "CloudStack management server is running with pid $pids"
+        elif [ "$action" = "restart" ];then
+            echo >&2 "Stopping management server with pid $pids"
+            stop_pid $pids && start_management
+        fi
+    elif [ "$action" = "restart" ];then
+        start_management
+    fi
 
-for f in `ls /root/packages/*.list`;do
-    cp $f /etc/apt/sources.list.d/;
-done
+    echo "$action cloudstack usage server"
+    pids=$(find_pids "cloudstack-usage")
+    if [ "$pids" != "" ];then
+        if [ "$action" = "start" ];then
+            echo >&2 "CloudStack usage server is running with pid $pids"
+        elif [ "$action" = "restart" ];then
+            echo >&2 "Stopping usage server with pid $pids"
+            stop_pid $pids && start_usage
+        fi
+    elif [ "$action" = "restart" ];then
+        start_usage
+    fi
+}
 
-apt update -qq
+update_repo() {
+    for f in `ls /root/packages/*.asc`;do
+        apt-key add $f;
+    done
+
+    for f in `ls /root/packages/*.list`;do
+        cp $f /etc/apt/sources.list.d/;
+    done
+
+    apt update -qq
+}
 
 if [ "$1" = "start" ] || [ "$1" = "restart" ];then
     start_cloudstack $1
@@ -61,6 +105,7 @@ fi
 
 if [ "$1" = "setup" ] || [ "$1" = "install" ];then
     echo "Installing CloudStack management server"
+    update_repo
     apt_version=$(apt-cache madison cloudstack-common | grep -w "$CLOUDSTACK_VERSION" | head -n1 |awk '{print $3}')
     if [ "$?" != "0" ] || [ "$apt_version" = "" ];then
         echo "Cannot find CloudStack $CLOUDSTACK_VERSION packages in APT repo"

@@ -21,5 +21,6 @@ services:
     command: setup
 
 networks:
-  external: true
-  name: breth1
+  breth1:
+    external:
+      name: dockercloudstack_breth1
