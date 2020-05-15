@@ -3,10 +3,10 @@
 docker build -f Dockerfile -t cloudstack-management:ubuntu1604 .
 
 # Create mariadb cluster (run only once)
-docker-compose -f galera_cluster.yml up -d
+docker-compose -f galera_cluster.yaml up -d
 
 # Start mariadb cluster (run if mariadb cluster is stopped)
-docker-compose -f galera_cluster_created.yml up -d
+docker-compose -f galera_cluster_created.yaml up -d
 
 # Start CloudStack management server mgt01 and setup cloudstack database
 docker-compose -f cloudstack-mgt01-setup.yaml up -d
