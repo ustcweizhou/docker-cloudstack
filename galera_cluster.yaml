@@ -5,7 +5,7 @@ services:
     hostname: db01
     networks:
         breth1:
-            ipv4_address: 10.11.108.42
+            ipv4_address: {{ db01_ip }}
     volumes:
         - /root/docker/db01:/var/lib/mysql
     environment:
@@ -29,7 +29,7 @@ services:
       - db01
     networks:
         breth1:
-            ipv4_address: 10.11.108.43
+            ipv4_address: {{ db02_ip }}
     volumes:
         - /root/docker/db02:/var/lib/mysql
     environment:
@@ -48,7 +48,7 @@ services:
       - db01
     networks:
         breth1:
-            ipv4_address: 10.11.108.44
+            ipv4_address: {{ db03_ip }}
     volumes:
         - /root/docker/db03:/var/lib/mysql
     environment:
@@ -71,7 +71,7 @@ services:
       - db03
     networks:
         breth1:
-            ipv4_address: 10.11.108.45
+            ipv4_address: {{ db_vip }}
     volumes:
         - /root/docker/nginx.conf:/etc/nginx/nginx.conf
 
@@ -83,6 +83,6 @@ networks:
         ipam:
             driver: default
             config:
-                - subnet: 10.11.108.0/24
-                  iprange: 10.11.108.0/26
-                  gateway: 10.11.108.41
+                - subnet: {{ subnet }}
+                  iprange: {{ subnet }}
+                  gateway: {{ host_ip }}

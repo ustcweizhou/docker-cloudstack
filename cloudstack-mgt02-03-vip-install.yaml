@@ -5,12 +5,12 @@ services:
     hostname: mgt02
     networks:
         breth1:
-            ipv4_address: 10.11.108.47
+            ipv4_address: {{ mgt02_ip }}
     volumes:
         - /root/docker/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
@@ -25,12 +25,12 @@ services:
     hostname: mgt03
     networks:
         breth1:
-            ipv4_address: 10.11.108.48
+            ipv4_address: {{ mgt03_ip }}
     volumes:
         - /root/docker/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
@@ -45,7 +45,7 @@ services:
     hostname: mgtvip
     networks:
         breth1:
-            ipv4_address: 10.11.108.49
+            ipv4_address: {{ mgt_vip }}
     volumes:
         - /root/docker/nginx-cloudstack.conf:/etc/nginx/nginx.conf
 

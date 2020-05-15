@@ -5,12 +5,12 @@ services:
     hostname: mgt01
     networks:
         breth1:
-            ipv4_address: 10.11.108.46
+            ipv4_address: {{ mgt01_ip }}
     volumes:
         - /root/docker/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
