@@ -15,6 +15,29 @@ if [ "$action" = "" ]; then
     exit 1
 fi
 
+fix_mariadb_db01() {
+    # It may not be safe to bootstrap the cluster from this node. 
+    # It was not the last one to leave the cluster and may not contain all the updates.
+    # To force cluster bootstrap with this node, edit the grastate.dat file manually and set safe_to_bootstrap to 1 .
+    mkdir -p ${DIR_NAME}/db01 ${DIR_NAME}/db02 ${DIR_NAME}/db03
+    if [ -f "${DIR_NAME}/db01/grastate.dat" ];then
+        sed -i "s,safe_to_bootstrap: 0,safe_to_bootstrap: 1,g" ${DIR_NAME}/db01/grastate.dat
+    fi
+}
+
+fix_mariadb_utf8() {
+    # Illegal mix of collations (utf8_unicode_ci,IMPLICIT) and (utf8_general_ci,IMPLICIT) for operation '='
+    cmd="sed -i 's,^collation-server,;collation-server,g' /etc/mysql/conf.d/utf8.cnf"
+    docker-compose -f galera_cluster_created.yaml exec db01 /bin/bash -c "$cmd"
+    docker-compose -f galera_cluster_created.yaml exec db02 /bin/bash -c "$cmd"
+    docker-compose -f galera_cluster_created.yaml exec db03 /bin/bash -c "$cmd"
+    fix_mariadb_db01
+    docker-compose -f galera_cluster_created.yaml restart db01
+    check_database
+    docker-compose -f galera_cluster_created.yaml restart db02
+    docker-compose -f galera_cluster_created.yaml restart db03
+}
+
 check_database() {
     set +e
     retry=$CHECK_RETRIES
@@ -40,10 +63,10 @@ check_mgtserver() {
     set +e
     retry=$CHECK_RETRIES
     echo -n "Checking CloudStack management server mgt01 .."
-    cmk_cmd="/usr/bin/cmk list accounts"
+    cmk_cmd="/usr/bin/cmk list accounts filter=name"
     while [ $retry -gt 0 ];do
         echo -n "."
-        cmk_listaccounts=$(docker-compose -f cloudstack-mgt01-setup.yaml exec mgt01 /bin/bash -c "$cmk_cmd")
+        cmk_listaccounts=$(docker-compose -f cloudstack-mgtservers-install.yaml exec mgt01 /bin/bash -c "$cmk_cmd")
         if [ $? -eq 0 ] && [ "$cmk_listaccounts" != "" ];then
             echo " connected"
             break
@@ -92,12 +115,10 @@ if [ "$action" = "create" ];then
     fi
 
     # Create mariadb cluster (run only once)
-    mkdir -p ${DIR_NAME}/db01 ${DIR_NAME}/db02 ${DIR_NAME}/db03
-    if [ -f "${DIR_NAME}/db01/grastate.dat" ];then
-        sed -i "s,safe_to_bootstrap: 0,safe_to_bootstrap: 1,g" ${DIR_NAME}/db01/grastate.dat
-    fi
+    fix_mariadb_db01
     docker-compose -f galera_cluster.yaml up -d
     check_database
+    fix_mariadb_utf8
 
     # Create CloudStack management server mgt01 and setup cloudstack database
     docker-compose -f cloudstack-mgt01-setup.yaml up -d
@@ -112,6 +133,7 @@ elif [ "$action" = "delete" ];then
 elif [ "$action" = "restart" ];then
     docker-compose -f galera_cluster_created.yaml up -d
     check_database
+    fix_mariadb_utf8
     docker-compose -f cloudstack-mgtservers-install.yaml up -d
     check_mgtserver
 fi

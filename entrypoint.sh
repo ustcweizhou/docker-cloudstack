@@ -16,6 +16,8 @@ install_local_packages() {
 setup_cloudstack() {
     action=$1
     ip=$(hostname --ip-address | cut -d" " -f1)
+
+    # Setup database
     if [ -z "${MYSQL_CLOUD_PASSWORD}" ] || [ -z "${MYSQL_ADDRESS}" ] \
             || [ -z "${MANAGEMENT_KEY}" ] || [ -z "${DATABASE_KEY}" ];then
         echo >&2 'Missing MYSQL_CLOUD_PASSWORD or MYSQL_ADDRESS or MANAGEMENT_KEY or DATABASE_KEY'
@@ -31,6 +33,12 @@ setup_cloudstack() {
         command="cloudstack-setup-databases cloud:${MYSQL_CLOUD_PASSWORD}@${MYSQL_ADDRESS} --deploy-as=root:${MYSQL_ROOT_PASSWORD} -e file -m ${MANAGEMENT_KEY} -k ${DATABASE_KEY} -i $ip"
     fi
     $command
+
+    # Update java.security
+    f=$(find /usr/lib/jvm/ -name java.security)
+    sed -i "s/securerandom.source=file.*/securerandom.source=file:\/dev\/urandom/g" $f
+
+    # Configure management server
     cloudstack-setup-management --no-start
 }
 
