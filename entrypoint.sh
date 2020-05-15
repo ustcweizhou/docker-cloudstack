@@ -36,9 +36,14 @@ setup_cloudstack() {
 
 start_cloudstack() {
     action=$1
-    systemctl $action cloudstack-management
-    systemctl $action cloudstack-usage
+
+    source /etc/default/cloudstack-management
+    /usr/bin/java $JAVA_DEBUG $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS > /dev/null 2>&1 & 
+
+    source /etc/default/cloudstack-usage
+    /usr/bin/java -Dpid=$$ $JAVA_OPTS $JAVA_DEBUG -cp $CLASSPATH $JAVA_CLASS > /dev/null 2>&1 &
 }
+
 for f in `ls /root/packages/*.asc`;do
     apt-key add $f;
 done
