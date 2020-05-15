@@ -124,3 +124,6 @@ if [ "$1" = "setup" ] || [ "$1" = "install" ];then
     setup_cloudstack $1
     start_cloudstack "restart"
 fi
+
+# Keep container running
+tail -f /dev/null
