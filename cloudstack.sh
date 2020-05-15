@@ -107,11 +107,11 @@ if [ "$action" = "create" ];then
     docker-compose -f cloudstack-mgt02-03-vip-install.yaml up -d
 
 elif [ "$action" = "delete" ];then
-    docker-compose -f cloudstack-mgtservers-start.yaml down
+    docker-compose -f cloudstack-mgtservers-install.yaml down
     docker-compose -f galera_cluster.yaml down
 elif [ "$action" = "restart" ];then
     docker-compose -f galera_cluster_created.yaml up -d
     check_database
-    docker-compose -f cloudstack-mgtservers-start.yaml up -d
+    docker-compose -f cloudstack-mgtservers-install.yaml up -d
     check_mgtserver
 fi

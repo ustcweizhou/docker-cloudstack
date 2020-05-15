@@ -100,7 +100,6 @@ update_repo() {
 
 if [ "$1" = "start" ] || [ "$1" = "restart" ];then
     start_cloudstack $1
-    exit 0
 fi
 
 if [ "$1" = "setup" ] || [ "$1" = "install" ];then
