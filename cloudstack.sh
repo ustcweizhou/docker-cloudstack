@@ -15,6 +15,10 @@ if [ "$action" = "" ]; then
     exit 1
 fi
 
+log_it() {
+    echo "$(date +%T) : $*"
+}
+
 fix_mariadb_db01() {
     # It may not be safe to bootstrap the cluster from this node. 
     # It was not the last one to leave the cluster and may not contain all the updates.
@@ -47,13 +51,15 @@ check_database() {
         host=$(MYSQL_PWD=cloudstack mysql -h ${DB_VIP} -uroot -NB -e "SELECT @@hostname")
         if [ $? -eq 0 ] && [ "$host" != "" ];then
             echo " connected"
+            log_it "Connected to mariadb galera cluster"
             break
         fi
         let retry=retry-1
         sleep $CHECK_INTERVAL
     done
     if [ $retry -eq 0 ];then
-        echo -e "\nFailed to connect to mariadb galera cluster, exiting"
+        echo " timeout"
+        log_it "Failed to connect to mariadb galera cluster, exiting"
         exit 1
     fi
     set -e
@@ -69,13 +75,15 @@ check_mgtserver() {
         cmk_listaccounts=$(docker-compose -f cloudstack-mgtservers-install.yaml exec mgt01 /bin/bash -c "$cmk_cmd")
         if [ $? -eq 0 ] && [ "$cmk_listaccounts" != "" ];then
             echo " connected"
+            log_it "Connected to CloudStack management server mgt01"
             break
         fi
         let retry=retry-1
         sleep $CHECK_INTERVAL
     done
     if [ $retry -eq 0 ];then
-        echo -e "\nFailed to connect to CloudStack management server mgt01, exiting"
+        echo " timeout"
+        log_it "Failed to connect to CloudStack management server mgt01, exiting"
         exit 1
     fi
     set -e
@@ -104,9 +112,9 @@ if [ "$action" = "create" ];then
     # Create docker network
     is_bridged=$(docker network ls --filter name=${BRIDGE_NAME})
     if [ "$is_bridged" != "" ];then
-        echo "docker network ${BRIDGE_NAME} already exists"
+        log_it "docker network ${BRIDGE_NAME} already exists"
     else
-        echo "Creating docker network ${BRIDGE_NAME} ..."
+        log_it "Creating docker network ${BRIDGE_NAME} ..."
         docker network create -d bridge \
             --subnet=${SUBNET} \
             --gateway=${HOST_IP} \
@@ -129,7 +137,7 @@ if [ "$action" = "create" ];then
 
 elif [ "$action" = "delete" ];then
     docker-compose -f cloudstack-mgtservers-install.yaml down
-    docker-compose -f galera_cluster.yaml down
+    docker-compose -f galera_cluster_created.yaml down
 elif [ "$action" = "restart" ];then
     docker-compose -f galera_cluster_created.yaml up -d
     check_database
