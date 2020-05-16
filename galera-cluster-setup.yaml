@@ -25,8 +25,6 @@ services:
     hostname: db02
     depends_on:
       - db01
-    links:
-      - db01
     networks:
         breth1:
             ipv4_address: {{ db02_ip }}
@@ -44,8 +42,6 @@ services:
     hostname: db03
     depends_on:
       - db01
-    links:
-      - db01
     networks:
         breth1:
             ipv4_address: {{ db03_ip }}
@@ -61,10 +57,6 @@ services:
   dbvip:
     image: nginx
     hostname: dbvip
-    depends_on:
-      - db01
-      - db02
-      - db03
     links:
       - db01
       - db02

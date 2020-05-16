@@ -32,14 +32,14 @@ fix_mariadb_db01() {
 fix_mariadb_utf8() {
     # Illegal mix of collations (utf8_unicode_ci,IMPLICIT) and (utf8_general_ci,IMPLICIT) for operation '='
     cmd="sed -i 's,^collation-server,;collation-server,g' /etc/mysql/conf.d/utf8.cnf"
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db01 /bin/bash -c "$cmd"
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db02 /bin/bash -c "$cmd"
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db03 /bin/bash -c "$cmd"
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster exec db01 /bin/bash -c "$cmd"
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster exec db02 /bin/bash -c "$cmd"
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster exec db03 /bin/bash -c "$cmd"
     fix_mariadb_db01
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db01
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster restart db01
     check_database
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db02
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db03
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster restart db02
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster restart db03
 }
 
 check_database() {
@@ -72,7 +72,7 @@ check_mgtserver() {
     cmk_cmd="/usr/bin/cmk list accounts filter=name"
     while [ $retry -gt 0 ];do
         echo -n "."
-        cmk_listaccounts=$(docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt exec mgt01 /bin/bash -c "$cmk_cmd" 2>&1)
+        cmk_listaccounts=$(./docker-compose -f cloudstack-mgtservers.yaml -p cloudstack-mgt exec mgt01 /bin/bash -c "$cmk_cmd" 2>&1)
         if [ $? -eq 0 ] && [ "$cmk_listaccounts" != "" ];then
             echo " connected"
             log_it "Connected to CloudStack management server mgt01"
@@ -88,6 +88,10 @@ check_mgtserver() {
     fi
     set -e
 }
+
+if [ -d ".git" ];then
+    git checkout *.yaml *.conf
+fi
 
 source cloudstack.cnf
 
@@ -124,24 +128,34 @@ if [ "$action" = "create" ];then
 
     # Create mariadb cluster (run only once)
     fix_mariadb_db01
-    docker-compose -f galera_cluster.yaml -p galera-cluster up -d
+    ./docker-compose -f galera-cluster-setup.yaml -p galera-cluster up -d
     check_database
     fix_mariadb_utf8
 
-    # Create CloudStack management server mgt01 and setup cloudstack database
-    docker-compose -f cloudstack-mgt01-setup.yaml -p cloudstack-mgt up -d
+    # Create CloudStack management server mgt01/mgt02/mgt03 and setup cloudstack database
+    ./docker-compose -f cloudstack-mgtservers-setup.yaml -p cloudstack-mgt up -d
     check_mgtserver
-
-    # Create other CloudStack management server mgt02/mgt03/nginx
-    docker-compose -f cloudstack-mgt02-03-vip-install.yaml -p cloudstack-mgt up -d
 
 elif [ "$action" = "delete" ];then
-    docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt down
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster down
+    ./docker-compose -f cloudstack-mgtservers.yaml -p cloudstack-mgt down
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster down
+    rm -rf ${DIR_NAME}/db0*/*
 elif [ "$action" = "restart" ];then
-    docker-compose -f galera_cluster_created.yaml -p galera-cluster up -d
+    fix_mariadb_db01
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster up -d
     check_database
     fix_mariadb_utf8
-    docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt up -d
+    ./docker-compose -f cloudstack-mgtservers.yaml -p cloudstack-mgt up -d
     check_mgtserver
+elif [ "$action" = "stop" ];then
+    ./docker-compose -f cloudstack-mgtservers.yaml -p cloudstack-mgt down
+    ./docker-compose -f galera-cluster.yaml -p galera-cluster down
+elif [ "$action" = "cmd" ];then
+    shift
+    server=$2
+    if [[ $server == db* ]];then
+        ./docker-compose -f galera-cluster.yaml -p galera-cluster $@
+    elif [[ $server == mgt* ]];then
+        ./docker-compose -f cloudstack-mgtservers.yaml -p cloudstack-mgt $@
+    fi
 fi
