@@ -32,14 +32,14 @@ fix_mariadb_db01() {
 fix_mariadb_utf8() {
     # Illegal mix of collations (utf8_unicode_ci,IMPLICIT) and (utf8_general_ci,IMPLICIT) for operation '='
     cmd="sed -i 's,^collation-server,;collation-server,g' /etc/mysql/conf.d/utf8.cnf"
-    docker-compose -f galera_cluster_created.yaml exec db01 /bin/bash -c "$cmd"
-    docker-compose -f galera_cluster_created.yaml exec db02 /bin/bash -c "$cmd"
-    docker-compose -f galera_cluster_created.yaml exec db03 /bin/bash -c "$cmd"
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db01 /bin/bash -c "$cmd"
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db02 /bin/bash -c "$cmd"
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster exec db03 /bin/bash -c "$cmd"
     fix_mariadb_db01
-    docker-compose -f galera_cluster_created.yaml restart db01
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db01
     check_database
-    docker-compose -f galera_cluster_created.yaml restart db02
-    docker-compose -f galera_cluster_created.yaml restart db03
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db02
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster restart db03
 }
 
 check_database() {
@@ -48,7 +48,7 @@ check_database() {
     echo -n "Checking database connection .."
     while [ $retry -gt 0 ];do
         echo -n "."
-        host=$(MYSQL_PWD=cloudstack mysql -h ${DB_VIP} -uroot -NB -e "SELECT @@hostname")
+        host=$(MYSQL_PWD=cloudstack mysql -h ${DB_VIP} -uroot -NB -e "SELECT @@hostname" 2>&1)
         if [ $? -eq 0 ] && [ "$host" != "" ];then
             echo " connected"
             log_it "Connected to mariadb galera cluster"
@@ -72,7 +72,7 @@ check_mgtserver() {
     cmk_cmd="/usr/bin/cmk list accounts filter=name"
     while [ $retry -gt 0 ];do
         echo -n "."
-        cmk_listaccounts=$(docker-compose -f cloudstack-mgtservers-install.yaml exec mgt01 /bin/bash -c "$cmk_cmd")
+        cmk_listaccounts=$(docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt exec mgt01 /bin/bash -c "$cmk_cmd" 2>&1)
         if [ $? -eq 0 ] && [ "$cmk_listaccounts" != "" ];then
             echo " connected"
             log_it "Connected to CloudStack management server mgt01"
@@ -124,24 +124,24 @@ if [ "$action" = "create" ];then
 
     # Create mariadb cluster (run only once)
     fix_mariadb_db01
-    docker-compose -f galera_cluster.yaml up -d
+    docker-compose -f galera_cluster.yaml -p galera-cluster up -d
     check_database
     fix_mariadb_utf8
 
     # Create CloudStack management server mgt01 and setup cloudstack database
-    docker-compose -f cloudstack-mgt01-setup.yaml up -d
+    docker-compose -f cloudstack-mgt01-setup.yaml -p cloudstack-mgt up -d
     check_mgtserver
 
     # Create other CloudStack management server mgt02/mgt03/nginx
-    docker-compose -f cloudstack-mgt02-03-vip-install.yaml up -d
+    docker-compose -f cloudstack-mgt02-03-vip-install.yaml -p cloudstack-mgt up -d
 
 elif [ "$action" = "delete" ];then
-    docker-compose -f cloudstack-mgtservers-install.yaml down
-    docker-compose -f galera_cluster_created.yaml down
+    docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt down
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster down
 elif [ "$action" = "restart" ];then
-    docker-compose -f galera_cluster_created.yaml up -d
+    docker-compose -f galera_cluster_created.yaml -p galera-cluster up -d
     check_database
     fix_mariadb_utf8
-    docker-compose -f cloudstack-mgtservers-install.yaml up -d
+    docker-compose -f cloudstack-mgtservers-install.yaml -p cloudstack-mgt up -d
     check_mgtserver
 fi
