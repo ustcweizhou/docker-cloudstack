@@ -1,0 +1,89 @@
+version: "2.4"
+services:
+  mgt01:
+    image: cloudstack-management:ubuntu1604
+    hostname: mgt01
+    networks:
+        breth1:
+            ipv4_address: {{ mgt01_ip }}
+    volumes:
+        - {{ dir }}/packages:/root/packages
+    healthcheck:
+        test: ["CMD", "/usr/bin/cmk", "list", "accounts", "filter=name"]
+        interval: 10s
+        timeout: 10s
+        retries: 60
+        start_period: 10s
+    environment:
+      - CLOUDSTACK_VERSION=4.14.0.0~bionic
+      - MYSQL_ADDRESS={{ db_vip }}
+      - MYSQL_ROOT_PASSWORD=cloudstack
+      - MYSQL_CLOUD_PASSWORD=cloudstack
+      - MANAGEMENT_KEY=mgtKey
+      - DATABASE_KEY=dbKey
+      - SYSTEMVM_TEMPLATE=http://download.cloudstack.org/systemvm/4.14/systemvmtemplate-4.14.0-kvm.qcow2.bz2
+      - ADMIN_PASSWORD=cloudstack
+      - NODE_NAME=mgt01
+    command: setup
+
+  mgt02:
+    image: cloudstack-management:ubuntu1604
+    hostname: mgt02
+    depends_on:
+        mgt01:
+            condition: service_healthy
+    networks:
+        breth1:
+            ipv4_address: {{ mgt02_ip }}
+    volumes:
+        - {{ dir }}/packages:/root/packages
+    environment:
+      - CLOUDSTACK_VERSION=4.14.0.0~bionic
+      - MYSQL_ADDRESS={{ db_vip }}
+      - MYSQL_ROOT_PASSWORD=cloudstack
+      - MYSQL_CLOUD_PASSWORD=cloudstack
+      - MANAGEMENT_KEY=mgtKey
+      - DATABASE_KEY=dbKey
+      - SYSTEMVM_TEMPLATE=http://download.cloudstack.org/systemvm/4.14/systemvmtemplate-4.14.0-kvm.qcow2.bz2
+      - ADMIN_PASSWORD=cloudstack
+      - NODE_NAME=mgt02
+    command: install
+
+  mgt03:
+    image: cloudstack-management:ubuntu1604
+    hostname: mgt03
+    depends_on:
+        mgt01:
+            condition: service_healthy
+    networks:
+        breth1:
+            ipv4_address: {{ mgt03_ip }}
+    volumes:
+        - {{ dir }}/packages:/root/packages
+    environment:
+      - CLOUDSTACK_VERSION=4.14.0.0~bionic
+      - MYSQL_ADDRESS={{ db_vip }}
+      - MYSQL_ROOT_PASSWORD=cloudstack
+      - MYSQL_CLOUD_PASSWORD=cloudstack
+      - MANAGEMENT_KEY=mgtKey
+      - DATABASE_KEY=dbKey
+      - SYSTEMVM_TEMPLATE=http://download.cloudstack.org/systemvm/4.14/systemvmtemplate-4.14.0-kvm.qcow2.bz2
+      - ADMIN_PASSWORD=cloudstack
+      - NODE_NAME=mgt03
+    command: install
+
+  mgtvip:
+    image: nginx
+    hostname: mgtvip
+    ports:
+        - "8080:8080"
+    networks:
+        breth1:
+            ipv4_address: {{ mgt_vip }}
+    volumes:
+        - {{ dir }}/nginx-cloudstack.conf:/etc/nginx/nginx.conf
+
+networks:
+  breth1:
+    external:
+      name: {{ bridge }}
