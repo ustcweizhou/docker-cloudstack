@@ -114,7 +114,7 @@ if [ "$action" = "create" ];then
     cp nginx-cloudstack.conf ${DIR_NAME}/
 
     # Create docker network
-    is_bridged=$(docker network ls --filter name=${BRIDGE_NAME})
+    is_bridged=$(docker network ls --filter name=${BRIDGE_NAME} | grep -v "NETWORK ID" || true)
     if [ "$is_bridged" != "" ];then
         log_it "docker network ${BRIDGE_NAME} already exists"
     else
@@ -123,7 +123,7 @@ if [ "$action" = "create" ];then
             --subnet=${SUBNET} \
             --gateway=${HOST_IP} \
             --ip-range=${SUBNET} \
-            -o "com.docker.network.bridge.name=breth1" ${BRIDGE_NAME}
+            -o "com.docker.network.bridge.name=${BRIDGE_NAME}" ${BRIDGE_NAME}
     fi
 
     # Create mariadb cluster (run only once)

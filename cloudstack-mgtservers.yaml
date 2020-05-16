@@ -1,16 +1,22 @@
-version: "2"
+version: "2.4"
 services:
   mgt01:
     image: cloudstack-management:ubuntu1604
     hostname: mgt01
     networks:
-        breth1:
-            ipv4_address: 10.11.108.46
+        {{ bridge }}:
+            ipv4_address: {{ mgt01_ip }}
     volumes:
-        - /root/docker//packages:/root/packages
+        - {{ dir }}/packages:/root/packages
+    healthcheck:
+        test: ["CMD", "/usr/bin/cmk", "list", "accounts", "filter=name"]
+        interval: 10s
+        timeout: 10s
+        retries: 60
+        start_period: 10s
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
@@ -24,13 +30,13 @@ services:
     image: cloudstack-management:ubuntu1604
     hostname: mgt02
     networks:
-        breth1:
-            ipv4_address: 10.11.108.47
+        {{ bridge }}:
+            ipv4_address: {{ mgt02_ip }}
     volumes:
-        - /root/docker//packages:/root/packages
+        - {{ dir }}/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
@@ -44,13 +50,13 @@ services:
     image: cloudstack-management:ubuntu1604
     hostname: mgt03
     networks:
-        breth1:
-            ipv4_address: 10.11.108.48
+        {{ bridge }}:
+            ipv4_address: {{ mgt03_ip }}
     volumes:
-        - /root/docker//packages:/root/packages
+        - {{ dir }}/packages:/root/packages
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
-      - MYSQL_ADDRESS=10.11.108.45
+      - MYSQL_ADDRESS={{ db_vip }}
       - MYSQL_ROOT_PASSWORD=cloudstack
       - MYSQL_CLOUD_PASSWORD=cloudstack
       - MANAGEMENT_KEY=mgtKey
@@ -63,13 +69,15 @@ services:
   mgtvip:
     image: nginx
     hostname: mgtvip
+    ports:
+        - "8080:8080"
     networks:
-        breth1:
-            ipv4_address: 10.11.108.49
+        {{ bridge }}:
+            ipv4_address: {{ mgt_vip }}
     volumes:
-        - /root/docker//nginx-cloudstack.conf:/etc/nginx/nginx.conf
+        - {{ dir }}/nginx-cloudstack.conf:/etc/nginx/nginx.conf
 
 networks:
-  breth1:
+  {{ bridge }}:
     external:
-      name: breth1
+      name: {{ bridge }}

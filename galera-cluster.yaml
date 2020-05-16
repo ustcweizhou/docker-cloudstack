@@ -4,7 +4,7 @@ services:
     image: hauptmedia/mariadb:10.1
     hostname: db01
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db01_ip }}
     volumes:
         - {{ dir }}/db01:/var/lib/mysql
@@ -22,12 +22,8 @@ services:
   db02:
     image: hauptmedia/mariadb:10.1
     hostname: db02
-    depends_on:
-      - db01
-    links:
-      - db01
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db02_ip }}
     volumes:
         - {{ dir }}/db02:/var/lib/mysql
@@ -41,12 +37,8 @@ services:
   db03:
     image: hauptmedia/mariadb:10.1
     hostname: db03
-    depends_on:
-      - db01
-    links:
-      - db01
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db03_ip }}
     volumes:
         - {{ dir }}/db03:/var/lib/mysql
@@ -60,21 +52,13 @@ services:
   dbvip:
     image: nginx
     hostname: dbvip
-    depends_on:
-      - db01
-      - db02
-      - db03
-    links:
-      - db01
-      - db02
-      - db03
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db_vip }}
     volumes:
         - {{ dir }}/nginx-galera.conf:/etc/nginx/nginx.conf
 
 networks:
-  breth1:
+  {{ bridge }}:
     external:
       name: {{ bridge }}

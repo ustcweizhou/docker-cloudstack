@@ -1,13 +1,19 @@
-version: "2"
+version: "2.4"
 services:
   db01:
     image: hauptmedia/mariadb:10.1
     hostname: db01
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db01_ip }}
     volumes:
         - {{ dir }}/db01:/var/lib/mysql
+    healthcheck:
+        test: ["CMD", "mysqladmin", "-uroot", "-pcloudstack", "ping"]
+        interval: 10s
+        timeout: 10s
+        retries: 60
+        start_period: 10s
     environment:
       - MYSQL_ROOT_PASSWORD=cloudstack
       - REPLICATION_PASSWORD=cloudstack
@@ -24,9 +30,10 @@ services:
     image: hauptmedia/mariadb:10.1
     hostname: db02
     depends_on:
-      - db01
+        db01:
+            condition: service_healthy
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db02_ip }}
     volumes:
         - {{ dir }}/db02:/var/lib/mysql
@@ -41,9 +48,10 @@ services:
     image: hauptmedia/mariadb:10.1
     hostname: db03
     depends_on:
-      - db01
+        db01:
+            condition: service_healthy
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db03_ip }}
     volumes:
         - {{ dir }}/db03:/var/lib/mysql
@@ -57,17 +65,13 @@ services:
   dbvip:
     image: nginx
     hostname: dbvip
-    links:
-      - db01
-      - db02
-      - db03
     networks:
-        breth1:
+        {{ bridge }}:
             ipv4_address: {{ db_vip }}
     volumes:
         - {{ dir }}/nginx-galera.conf:/etc/nginx/nginx.conf
 
 networks:
-  breth1:
+  {{ bridge }}:
     external:
       name: {{ bridge }}
