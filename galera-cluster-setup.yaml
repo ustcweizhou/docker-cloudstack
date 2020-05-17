@@ -7,13 +7,7 @@ services:
         {{ bridge }}:
             ipv4_address: {{ db01_ip }}
     volumes:
-        - {{ dir }}/db01:/var/lib/mysql
-    healthcheck:
-        test: ["CMD", "mysqladmin", "-uroot", "-pcloudstack", "ping"]
-        interval: 10s
-        timeout: 10s
-        retries: 60
-        start_period: 10s
+      - {{ dir }}/db01:/var/lib/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=cloudstack
       - REPLICATION_PASSWORD=cloudstack
@@ -23,20 +17,19 @@ services:
       - GALERA=On
       - NODE_NAME=db01
       - CLUSTER_NAME=maria_cluster
-      - CLUSTER_ADDRESS=gcomm://
+      - CLUSTER_ADDRESS=gcomm://db01,db02,db03
     command: --wsrep-new-cluster
 
   db02:
     image: hauptmedia/mariadb:10.1
     hostname: db02
     depends_on:
-        db01:
-            condition: service_healthy
+      - db01
     networks:
         {{ bridge }}:
             ipv4_address: {{ db02_ip }}
     volumes:
-        - {{ dir }}/db02:/var/lib/mysql
+      - {{ dir }}/db02:/var/lib/mysql
     environment:
       - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
@@ -48,13 +41,12 @@ services:
     image: hauptmedia/mariadb:10.1
     hostname: db03
     depends_on:
-        db01:
-            condition: service_healthy
+      - db01
     networks:
         {{ bridge }}:
             ipv4_address: {{ db03_ip }}
     volumes:
-        - {{ dir }}/db03:/var/lib/mysql
+      - {{ dir }}/db03:/var/lib/mysql
     environment:
       - REPLICATION_PASSWORD=cloudstack
       - GALERA=On
@@ -69,7 +61,7 @@ services:
         {{ bridge }}:
             ipv4_address: {{ db_vip }}
     volumes:
-        - {{ dir }}/nginx-galera.conf:/etc/nginx/nginx.conf
+      - {{ dir }}/nginx-galera.conf:/etc/nginx/nginx.conf
 
 networks:
   {{ bridge }}:
