@@ -8,12 +8,14 @@ services:
             ipv4_address: {{ mgt01_ip }}
     volumes:
         - {{ dir }}/packages:/root/packages
+        - {{ dir }}/mgt01/log:/var/log/cloudstack/
+        - {{ dir }}/mgt01/etc:/etc/cloudstack/
     healthcheck:
         test: ["CMD", "/usr/bin/cmk", "list", "accounts", "filter=name"]
-        interval: 10s
-        timeout: 10s
-        retries: 60
-        start_period: 10s
+        interval: {{ check_interval }}s
+        timeout: {{ check_timeout }}s
+        retries: {{ check_retries }}
+        start_period: {{ check_interval }}s
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
       - MYSQL_ADDRESS={{ db_vip }}
@@ -34,6 +36,8 @@ services:
             ipv4_address: {{ mgt02_ip }}
     volumes:
         - {{ dir }}/packages:/root/packages
+        - {{ dir }}/mgt02/log:/var/log/cloudstack/
+        - {{ dir }}/mgt02/etc:/etc/cloudstack/
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
       - MYSQL_ADDRESS={{ db_vip }}
@@ -54,6 +58,8 @@ services:
             ipv4_address: {{ mgt03_ip }}
     volumes:
         - {{ dir }}/packages:/root/packages
+        - {{ dir }}/mgt03/log:/var/log/cloudstack/
+        - {{ dir }}/mgt03/etc:/etc/cloudstack/
     environment:
       - CLOUDSTACK_VERSION=4.14.0.0~bionic
       - MYSQL_ADDRESS={{ db_vip }}

@@ -19,27 +19,27 @@ log_it() {
     echo "$(date +%T) : $*"
 }
 
-fix_mariadb_db01() {
+fix_mariadb_bootstrap() {
     # It may not be safe to bootstrap the cluster from this node. 
     # It was not the last one to leave the cluster and may not contain all the updates.
     # To force cluster bootstrap with this node, edit the grastate.dat file manually and set safe_to_bootstrap to 1 .
-    if [ -f "${DATA_DIR}/db01/grastate.dat" ];then
-        sed -i "s,safe_to_bootstrap: 0,safe_to_bootstrap: 1,g" ${DATA_DIR}/db01/grastate.dat
-        log_it "Updated safe_to_bootstrap in ${DATA_DIR}/db01/grastate.dat to 1"
+    db=$1
+    if [ -f "${DATA_DIR}/$db/grastate.dat" ];then
+        sed -i "s,safe_to_bootstrap: 0,safe_to_bootstrap: 1,g" ${DATA_DIR}/$db/grastate.dat
+        log_it "Updated safe_to_bootstrap in ${DATA_DIR}/$db/grastate.dat to 1"
     fi
 }
 
 fix_mariadb_utf8() {
     # Illegal mix of collations (utf8_unicode_ci,IMPLICIT) and (utf8_general_ci,IMPLICIT) for operation '='
+    db=$1
     cmd="sed -i 's,^collation-server,;collation-server,g' /etc/mysql/conf.d/utf8.cnf"
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} exec db01 /bin/bash -c "$cmd"
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} stop db01
-    fix_mariadb_db01
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} start db01
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} exec db02 /bin/bash -c "$cmd"
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} restart db02
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} exec db03 /bin/bash -c "$cmd"
-    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} restart db03
+    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} exec $db /bin/bash -c "$cmd"
+#    cmd="MYSQL_PWD=cloudstack mysql -uroot -e 'SET GLOBAL wsrep_provider_options=\"pc.bootstrap=1\"'"
+#    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} exec $db /bin/bash -c "$cmd"
+    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} stop $db
+    fix_mariadb_bootstrap $db
+    ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} start $db
 }
 
 check_database() {
@@ -101,9 +101,16 @@ load_conf() {
     fi    
 
     DATA_DIR="${DIR_NAME}/${PROJECT}"
-    mkdir -p ${PROJECT}
-    cp *.yaml *.conf ${PROJECT}
+    PROJECT_GALERA=${PROJECT}-galera-cluster
+    PROJECT_CLOUDSTACK=${PROJECT}-cloudstack-mgt
 
+    mkdir -p ${PROJECT}
+    cp cloudstack.cnf ${PROJECT}/cloudstack.cnf
+    echo "DATA_DIR=$DATA_DIR" >> ${PROJECT}/cloudstack.cnf
+    echo "PROJECT_GALERA=$PROJECT_GALERA" >> ${PROJECT}/cloudstack.cnf
+    echo "PROJECT_CLOUDSTACK=$PROJECT_CLOUDSTACK" >> ${PROJECT}/cloudstack.cnf
+
+    cp *.yaml *.conf ${PROJECT}
     cd ${PROJECT}
     sed -i "s,{{ dir }},${DATA_DIR},g" *.yaml *.conf
     sed -i "s,{{ host_ip }},${HOST_IP},g" *.yaml *.conf
@@ -118,13 +125,14 @@ load_conf() {
     sed -i "s,{{ mgt03_ip }},${MGT03_IP},g" *.yaml *.conf
     sed -i "s,{{ mgt_vip }},${MGT_VIP},g" *.yaml *.conf
 
+    sed -i "s,{{ check_interval }},${HEALTHCHECK_INTERVAL},g" *.yaml *.conf
+    sed -i "s,{{ check_timeout }},${HEALTHCHECK_TIMEOUT},g" *.yaml *.conf
+    sed -i "s,{{ check_retries }},${HEALTHCHECK_RETRIES},g" *.yaml *.conf
+
     mkdir -p ${DATA_DIR}
     cp nginx-galera.conf ${DATA_DIR}/
     cp nginx-cloudstack.conf ${DATA_DIR}/
     cd ..
-
-    PROJECT_GALERA=${PROJECT}-galera-cluster
-    PROJECT_CLOUDSTACK=${PROJECT}-cloudstack-mgt
 }
 
 load_conf
@@ -132,6 +140,9 @@ load_conf
 if [ "$action" = "create" ];then
     # Copy files
     mkdir -p ${DATA_DIR}/db01 ${DATA_DIR}/db02 ${DATA_DIR}/db03
+    mkdir -p ${DATA_DIR}/mgt01/etc ${DATA_DIR}/mgt01/log
+    mkdir -p ${DATA_DIR}/mgt02/etc ${DATA_DIR}/mgt02/log
+    mkdir -p ${DATA_DIR}/mgt03/etc ${DATA_DIR}/mgt03/log
     mkdir -p ${DATA_DIR}/packages/
     cp packages/* ${DATA_DIR}/packages/
 
@@ -152,13 +163,17 @@ if [ "$action" = "create" ];then
     fi
 
     # Create mariadb cluster (run only once)
-    fix_mariadb_db01
+    fix_mariadb_bootstrap "db01"
     ./docker-compose -f ${PROJECT}/galera-cluster-setup.yaml -p ${PROJECT_GALERA} up -d
-    fix_mariadb_utf8
+    check_database "db01"
+    check_database "db02"
+    check_database "db03"
+    fix_mariadb_utf8 "db01"
     check_database "db01"
     check_database "db02"
     check_database "db03"
 
+    exit 0
     # Create CloudStack management server mgt01/mgt02/mgt03 and setup cloudstack database
     ./docker-compose -f ${PROJECT}/cloudstack-mgtservers-setup.yaml -p ${PROJECT_CLOUDSTACK} up -d
     check_mgtserver "mgt01"
@@ -170,7 +185,7 @@ elif [ "$action" = "delete" ];then
     ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} down
     rm -rf ${DATA_DIR}/
 elif [ "$action" = "restart" ];then
-    fix_mariadb_db01
+    fix_mariadb_bootstrap "db01"
     ./docker-compose -f ${PROJECT}/galera-cluster.yaml -p ${PROJECT_GALERA} up -d
     check_database "db01"
     check_database "db02"
