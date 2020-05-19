@@ -168,12 +168,7 @@ if [ "$action" = "create" ];then
     check_database "db01"
     check_database "db02"
     check_database "db03"
-    fix_mariadb_utf8 "db01"
-    check_database "db01"
-    check_database "db02"
-    check_database "db03"
 
-    exit 0
     # Create CloudStack management server mgt01/mgt02/mgt03 and setup cloudstack database
     ./docker-compose -f ${PROJECT}/cloudstack-mgtservers-setup.yaml -p ${PROJECT_CLOUDSTACK} up -d
     check_mgtserver "mgt01"

@@ -1,7 +1,7 @@
 version: "2.4"
 services:
   db01:
-    image: hauptmedia/mariadb:10.1
+    image: ustcweizhou/mariadb-cluster:debian8-10.1
     hostname: db01
     networks:
         {{ bridge }}:
@@ -20,7 +20,7 @@ services:
       - CLUSTER_ADDRESS=gcomm://db01,db02,db03
 
   db02:
-    image: hauptmedia/mariadb:10.1
+    image: ustcweizhou/mariadb-cluster:debian8-10.1
     hostname: db02
     networks:
         {{ bridge }}:
@@ -35,7 +35,7 @@ services:
       - CLUSTER_ADDRESS=gcomm://db01,db02,db03
       
   db03:
-    image: hauptmedia/mariadb:10.1
+    image: ustcweizhou/mariadb-cluster:debian8-10.1
     hostname: db03
     networks:
         {{ bridge }}:
