@@ -1,0 +1,112 @@
+#!/bin/bash
+set -e
+
+MGMT_SERVICE="cloudstack-management"
+USAGE_SERVICE="cloudstack-usage"
+
+ACTION=$1
+SERVICE=${2:-management}
+
+find_pids() {
+    service=$1
+    pids=$(ps aux |grep "usr/bin/java" |grep "$service" |awk '{print $2}')
+    echo $pids
+}
+
+stop_pid() {
+    pids=$1
+    for pid in $pids;do
+        kill -SIGTERM $pid
+        sleep 0.1
+    done
+}
+
+start_management_service() {
+    source /etc/default/cloudstack-management
+    /usr/bin/java $JAVA_DEBUG $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS > /dev/null 2>&1 &
+    pids=$(find_pids $MGMT_SERVICE)
+    while [ "$pids" = "" ];do
+        sleep 0.1
+        pids=$(find_pids $MGMT_SERVICE)
+    done
+    echo >&2 "Started management server with pid $pids"
+}
+
+start_usage_service() {
+    source /etc/default/cloudstack-usage
+    /usr/bin/java -Dpid=$$ $JAVA_OPTS $JAVA_DEBUG -cp $CLASSPATH $JAVA_CLASS > /dev/null 2>&1 &
+    pids=$(find_pids $USAGE_SERVICE)
+    while [ "$pids" = "" ];do
+        sleep 0.1
+        pids=$(find_pids $USAGE_SERVICE)
+    done
+    echo >&2 "Started usage server with pid $pids"
+}
+
+stop_management() {
+    echo "Stopping cloudstack management server"
+    pids=$(find_pids $MGMT_SERVICE)
+    if [ "$pids" != "" ];then
+        echo >&2 "Stopping management server with pid $pids"
+        stop_pid $pids
+    fi
+    pids=$(find_pids $MGMT_SERVICE)
+    while [ "$pids" != "" ];do
+        sleep 0.1
+        pids=$(find_pids $MGMT_SERVICE)
+    done
+    echo >&2 "Stopped management server"
+}
+
+stop_usage() {
+    echo "Stopping cloudstack usage server"
+    pids=$(find_pids $USAGE_SERVICE)
+    if [ "$pids" != "" ];then
+        echo >&2 "Stopping usage server with pid $pids"
+        stop_pid $pids
+    fi
+    pids=$(find_pids $USAGE_SERVICE)
+    while [ "$pids" != "" ];do
+        sleep 0.1
+        pids=$(find_pids $USAGE_SERVICE)
+    done
+    echo >&2 "Stopped usage server"
+}
+
+start_management() {
+    echo "Starting cloudstack management server"
+    pids=$(find_pids $MGMT_SERVICE)
+    if [ "$pids" != "" ];then
+        echo >&2 "CloudStack management server is already running with pid $pids"
+    else
+        start_management_service
+    fi
+}
+
+start_usage() {
+    echo "Starting cloudstack usage server"
+    pids=$(find_pids $USAGE_SERVICE)
+    if [ "$pids" != "" ];then
+        echo >&2 "CloudStack usage server is already running with pid $pids"
+    else
+        start_usage_service
+    fi
+}
+
+restart_management() {
+    stop_management
+    start_management
+}
+
+restart_usage() {
+    stop_usage
+    start_usage
+}
+
+if [ "$SERVICE" = "management" ] || [ "$SERVICE" = "usage" ];then
+    if [ "$ACTION" = "start" ] || [ "$ACTION" = "restart" ] || [ "$ACTION" = "stop" ];then
+        CMD=${ACTION}_${SERVICE}
+        $CMD
+    fi
+fi
+
